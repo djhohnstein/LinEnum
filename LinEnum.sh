@@ -144,25 +144,6 @@ else
   :
 fi
 
-#last logged on user information
-lastlogedonusrs=`lastlog 2>/dev/null |grep -v "Never" 2>/dev/null`
-if [ "$lastlogedonusrs" ]; then
-  echo -e "\e[00;31m[-] Users that have previously logged onto the system:\e[00m\n$lastlogedonusrs" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-
-#who else is logged on
-loggedonusrs=`w 2>/dev/null`
-if [ "$loggedonusrs" ]; then
-  echo -e "\e[00;31m[-] Who else is logged on:\e[00m\n$loggedonusrs" 
-  echo -e "\n" 
-else 
-  :
-fi
-
 #lists all id's and respective group(s)
 grpinfo=`for i in $(cut -d":" -f1 /etc/passwd 2>/dev/null);do id $i;done 2>/dev/null`
 if [ "$grpinfo" ]; then
@@ -191,15 +172,6 @@ else
   :
 fi
  
-#contents of /etc/passwd
-readpasswd=`cat /etc/passwd 2>/dev/null`
-if [ "$readpasswd" ]; then
-  echo -e "\e[00;31m[-] Contents of /etc/passwd:\e[00m\n$readpasswd" 
-  echo -e "\n" 
-else 
-  :
-fi
-
 if [ "$export" ] && [ "$readpasswd" ]; then
   mkdir $format/etc-export/ 2>/dev/null
   cp /etc/passwd $format/etc-export/passwd 2>/dev/null
@@ -354,17 +326,6 @@ if [ "$thorough" = "1" ]; then
   fi
 fi
 
-#looks for files that belong to us
-if [ "$thorough" = "1" ]; then
-  ourfilesall=`find / -user \`whoami\` -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null`
-  if [ "$ourfilesall" ]; then
-    echo -e "\e[00;31m[-] Files owned by our user:\e[00m\n$ourfilesall"
-    echo -e "\n"
-  else
-    :
-  fi
-fi
-
 #looks for hidden files
 if [ "$thorough" = "1" ]; then
   hiddenfiles=`find / -name ".*" -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null`
@@ -374,43 +335,6 @@ if [ "$thorough" = "1" ]; then
   else
     :
   fi
-fi
-
-#looks for world-reabable files within /home - depending on number of /home dirs & files, this can take some time so is only 'activated' with thorough scanning switch
-if [ "$thorough" = "1" ]; then
-wrfileshm=`find /home/ -perm -4 -type f -exec ls -al {} \; 2>/dev/null`
-	if [ "$wrfileshm" ]; then
-		echo -e "\e[00;31m[-] World-readable files within /home:\e[00m\n$wrfileshm" 
-		echo -e "\n" 
-	else 
-		:
-	fi
-  else
-	:
-fi
-
-if [ "$thorough" = "1" ]; then
-	if [ "$export" ] && [ "$wrfileshm" ]; then
-		mkdir $format/wr-files/ 2>/dev/null
-		for i in $wrfileshm; do cp --parents $i $format/wr-files/ ; done 2>/dev/null
-	else 
-		:
-	fi
-  else
-	:
-fi
-
-#lists current user's home directory contents
-if [ "$thorough" = "1" ]; then
-homedircontents=`ls -ahl ~ 2>/dev/null`
-	if [ "$homedircontents" ] ; then
-		echo -e "\e[00;31m[-] Home directory contents:\e[00m\n$homedircontents" 
-		echo -e "\n" 
-	else 
-		:
-	fi
-  else
-	:
 fi
 
 #checks for if various ssh files are accessible - this can take some time so is only 'activated' with thorough scanning switch
@@ -487,39 +411,6 @@ else
   :
 fi
 
-#current umask value with both octal and symbolic output
-umaskvalue=`umask -S 2>/dev/null & umask 2>/dev/null`
-if [ "$umaskvalue" ]; then
-  echo -e "\e[00;31m[-] Current umask value:\e[00m\n$umaskvalue" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#umask value as in /etc/login.defs
-umaskdef=`grep -i "^UMASK" /etc/login.defs 2>/dev/null`
-if [ "$umaskdef" ]; then
-  echo -e "\e[00;31m[-] umask value as specified in /etc/login.defs:\e[00m\n$umaskdef" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#password policy information as stored in /etc/login.defs
-logindefs=`grep "^PASS_MAX_DAYS\|^PASS_MIN_DAYS\|^PASS_WARN_AGE\|^ENCRYPT_METHOD" /etc/login.defs 2>/dev/null`
-if [ "$logindefs" ]; then
-  echo -e "\e[00;31m[-] Password and storage information:\e[00m\n$logindefs" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-if [ "$export" ] && [ "$logindefs" ]; then
-  mkdir $format/etc-export/ 2>/dev/null
-  cp /etc/login.defs $format/etc-export/login.defs 2>/dev/null
-else 
-  :
-fi
 }
 
 job_info()
@@ -539,15 +430,6 @@ fi
 cronjobwwperms=`find /etc/cron* -perm -0002 -type f -exec ls -la {} \; -exec cat {} 2>/dev/null \;`
 if [ "$cronjobwwperms" ]; then
   echo -e "\e[00;33m[+] World-writable cron jobs and file contents:\e[00m\n$cronjobwwperms" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#contab contents
-crontabvalue=`cat /etc/crontab 2>/dev/null`
-if [ "$crontabvalue" ]; then
-  echo -e "\e[00;31m[-] Crontab contents:\e[00m\n$crontabvalue" 
   echo -e "\n" 
 else 
   :
@@ -609,24 +491,6 @@ networking_info()
 {
 echo -e "\e[00;33m### NETWORKING  ##########################################\e[00m" 
 
-#nic information
-nicinfo=`/sbin/ifconfig -a 2>/dev/null`
-if [ "$nicinfo" ]; then
-  echo -e "\e[00;31m[-] Network and IP info:\e[00m\n$nicinfo" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#nic information (using ip)
-nicinfoip=`/sbin/ip a 2>/dev/null`
-if [ ! "$nicinfo" ] && [ "$nicinfoip" ]; then
-  echo -e "\e[00;31m[-] Network and IP info:\e[00m\n$nicinfoip" 
-  echo -e "\n" 
-else 
-  :
-fi
-
 arpinfo=`arp -a 2>/dev/null`
 if [ "$arpinfo" ]; then
   echo -e "\e[00;31m[-] ARP history:\e[00m\n$arpinfo" 
@@ -655,24 +519,6 @@ fi
 nsinfosysd=`systemd-resolve --status 2>/dev/null`
 if [ "$nsinfosysd" ]; then
   echo -e "\e[00;31m[-] Nameserver(s):\e[00m\n$nsinfosysd" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#default route configuration
-defroute=`route 2>/dev/null | grep default`
-if [ "$defroute" ]; then
-  echo -e "\e[00;31m[-] Default route:\e[00m\n$defroute" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#default route configuration
-defrouteip=`ip r 2>/dev/null | grep default`
-if [ ! "$defroute" ] && [ "$defrouteip" ]; then
-  echo -e "\e[00;31m[-] Default route:\e[00m\n$defrouteip" 
   echo -e "\n" 
 else 
   :
@@ -715,32 +561,6 @@ fi
 services_info()
 {
 echo -e "\e[00;33m### SERVICES #############################################\e[00m" 
-
-#running processes
-psaux=`ps aux 2>/dev/null`
-if [ "$psaux" ]; then
-  echo -e "\e[00;31m[-] Running processes:\e[00m\n$psaux" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-#lookup process binary path and permissisons
-procperm=`ps aux 2>/dev/null | awk '{print $11}'|xargs -r ls -la 2>/dev/null |awk '!x[$0]++' 2>/dev/null`
-if [ "$procperm" ]; then
-  echo -e "\e[00;31m[-] Process binaries and associated permissions (from above list):\e[00m\n$procperm" 
-  echo -e "\n" 
-else 
-  :
-fi
-
-if [ "$export" ] && [ "$procperm" ]; then
-procpermbase=`ps aux 2>/dev/null | awk '{print $11}' | xargs -r ls 2>/dev/null | awk '!x[$0]++' 2>/dev/null`
-  mkdir $format/ps-export/ 2>/dev/null
-  for i in $procpermbase; do cp --parents $i $format/ps-export/; done 2>/dev/null
-else 
-  :
-fi
 
 #anything 'useful' in inetd.conf
 inetdread=`cat /etc/inetd.conf 2>/dev/null`
@@ -1010,17 +830,6 @@ else
     :
 fi
 
-#anything in the default http home dirs (changed to thorough as can be large)
-if [ "$thorough" = "1" ]; then
-  apachehomedirs=`ls -alhR /var/www/ 2>/dev/null; ls -alhR /srv/www/htdocs/ 2>/dev/null; ls -alhR /usr/local/www/apache2/data/ 2>/dev/null; ls -alhR /opt/lampp/htdocs/ 2>/dev/null`
-  if [ "$apachehomedirs" ]; then
-    echo -e "\e[00;31m[-] www home dir contents:\e[00m\n$apachehomedirs" 
-    echo -e "\n" 
-else 
-    :
-  fi
-fi
-
 }
 
 interesting_files()
@@ -1242,30 +1051,6 @@ matchedcaps=`echo -e "$userswithcaps" | grep \`whoami\` | awk '{print $1}' 2>/de
 	fi
   else
 	  :
-fi
-
-#list all world-writable files excluding /proc and /sys
-if [ "$thorough" = "1" ]; then
-wwfiles=`find / ! -path "*/proc/*" ! -path "/sys/*" -perm -2 -type f -exec ls -la {} 2>/dev/null \;`
-	if [ "$wwfiles" ]; then
-		echo -e "\e[00;31m[-] World-writable files (excluding /proc and /sys):\e[00m\n$wwfiles" 
-		echo -e "\n" 
-	else 
-		:
-	fi
-  else
-	:
-fi
-
-if [ "$thorough" = "1" ]; then
-	if [ "$export" ] && [ "$wwfiles" ]; then
-		mkdir $format/ww-files/ 2>/dev/null
-		for i in $wwfiles; do cp --parents $i $format/ww-files/; done 2>/dev/null
-	else 
-		:
-	fi
-  else
-	:
 fi
 
 #are any .plan files accessible in /home (could contain useful information)
@@ -1559,15 +1344,6 @@ else
   :
 fi
 
-#all accessible .bash_history files in /home
-checkbashhist=`find /home -name .bash_history -print -exec cat {} 2>/dev/null \;`
-if [ "$checkbashhist" ]; then
-  echo -e "\e[00;31m[-] Location and contents (if accessible) of .bash_history file(s):\e[00m\n$checkbashhist"
-  echo -e "\n"
-else
-  :
-fi
-
 #is there any mail accessible
 readmail=`ls -la /var/mail 2>/dev/null`
 if [ "$readmail" ]; then
@@ -1590,6 +1366,33 @@ if [ "$export" ] && [ "$readmailroot" ]; then
   mkdir $format/mail-from-root/ 2>/dev/null
   cp $readmailroot $format/mail-from-root/ 2>/dev/null
 else 
+  :
+fi
+
+# Look for private keys.
+privatekeyfiles=`grep -rl "PRIVATE KEY-----" / 2> /dev/null`
+if [ "$privatekeyfiles" ]; then
+  echo -e "\e[00;33m[+] Private SSH keys found! List of keys:\e[00m\n$privatekeyfiles" 
+  echo -e "\n" 
+else
+  :
+fi
+
+# Look for AWS keys
+awskeyfiles=`grep -rli "aws_secret_access_key" / 2> /dev/null`
+if [ "$awskeyfiles" ]; then
+  echo -e "\e[00;33m[+] AWS Secret Keys Found! Keystores:\e[00m\n$awskeyfiles" 
+  echo -e "\n" 
+else
+  :
+fi
+
+# Look for git credential files
+gitcredfiles=`find / -name ".git-credentials" 2> /dev/null`
+if [ "$gitcredfiles" ]; then
+  echo -e "\e[00;33m[+] Git Credentials saved on the machine! Credential files:\e[00m\n$gitcredfiles" 
+  echo -e "\n" 
+else
   :
 fi
 }
